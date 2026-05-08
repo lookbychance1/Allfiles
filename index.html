@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="robots" content="noindex,nofollow"/>
+<title>SolveMCQ — Admin Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{
+  --bg:#080b10;--surface:#0f1218;--surface2:#161b24;--surface3:#1c2230;
+  --border:#1e2536;--border2:#28334a;
+  --accent:#00e5ff;--accent2:#8b5cf6;--accent3:#10b981;
+  --danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;
+  --text:#dde6f0;--text2:#8899b4;--text3:#4a5a72;
+  --font-head:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --font-body:'DM Sans',sans-serif;
+  --r:10px;--sidebar:248px;--ease:.16s ease;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+::selection{background:var(--accent);color:#000}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+a{color:var(--accent);text-decoration:none}
+code{font-family:var(--font-mono);font-size:12px;color:var(--accent);background:rgba(0,229,255,.08);padding:2px 6px;border-radius:4px}
+
+/* ═══ GRID NOISE BG ══════════════════════════════════════ */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(0,229,255,.02) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,.02) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+
+/* ═══ LOGIN ══════════════════════════════════════════════ */
+#loginScreen{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  z-index:900;background:var(--bg);
+}
+#loginScreen::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 55% 45% at 25% 55%,rgba(0,229,255,.06) 0%,transparent 65%),
+    radial-gradient(ellipse 50% 50% at 75% 25%,rgba(139,92,246,.05) 0%,transparent 65%);
+}
+.lcard{
+  width:420px;background:var(--surface);border:1px solid var(--border2);
+  border-radius:18px;padding:44px 40px;position:relative;z-index:1;
+  animation:fadeUp .4s cubic-bezier(.16,1,.3,1);
+  box-shadow:0 24px 80px rgba(0,0,0,.5);
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+.llogo{display:flex;align-items:center;gap:14px;margin-bottom:36px}
+.llogo-ico{
+  width:44px;height:44px;border-radius:12px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  box-shadow:0 0 20px rgba(0,229,255,.2);
+}
+.llogo-text{font-family:var(--font-head);font-size:18px;font-weight:800;color:var(--text)}
+.llogo-sub{font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:2px}
+.lfield{margin-bottom:18px}
+.lfield label{display:block;font-size:11px;font-weight:600;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.lfield input{
+  width:100%;padding:12px 14px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:var(--r);
+  color:var(--text);font-family:var(--font-mono);font-size:13px;
+  outline:none;transition:border-color var(--ease),box-shadow var(--ease);
+}
+.lfield input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,.08)}
+.lhint{font-size:11px;color:var(--text3);margin-top:5px}
+.lbtn{
+  width:100%;padding:13px;margin-top:4px;
+  background:linear-gradient(135deg,var(--accent),#00b0cc);
+  color:#000;font-weight:800;font-size:14px;letter-spacing:.02em;
+  border:none;border-radius:var(--r);cursor:pointer;
+  font-family:var(--font-head);
+  transition:opacity var(--ease),transform var(--ease),box-shadow var(--ease);
+  box-shadow:0 0 24px rgba(0,229,255,.15);
+}
+.lbtn:hover{opacity:.92;transform:translateY(-1px)}
+.lbtn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.lerr{
+  background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);
+  color:#fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;
+  margin-bottom:16px;display:none;
+}
+.lerr.show{display:block}
+.lsec{margin-top:20px;text-align:center;font-size:11px;color:var(--text3);
+  display:flex;align-items:center;justify-content:center;gap:6px}
+
+/* ═══ APP SHELL ══════════════════════════════════════════ */
+#app{display:none;height:100vh;position:relative;z-index:1}
+#app.on{display:flex}
+
+/* ═══ SIDEBAR ════════════════════════════════════════════ */
+.sb{
+  width:var(--sidebar);min-width:var(--sidebar);
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;height:100vh;overflow-y:auto;
+}
+.sb-logo{
+  padding:18px 16px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.sb-ico{
+  width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+}
+.sb-brand{font-family:var(--font-head);font-size:12px;font-weight:800;color:var(--text);line-height:1.2}
+.sb-brand span{display:block;font-size:9px;color:var(--text3);font-family:var(--font-mono);font-weight:400}
+.sb-admin{
+  padding:12px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.sb-av{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent2),#a855f7);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#fff;
+}
+.sb-aname{font-size:12px;font-weight:600;color:var(--text)}
+.sb-arole{font-size:9px;color:var(--accent);font-family:var(--font-mono);text-transform:uppercase}
+.nav{padding:10px 8px;flex:1}
+.ns{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;
+  letter-spacing:.12em;padding:4px 10px;margin:10px 0 3px}
+.ni{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 10px;border-radius:8px;cursor:pointer;
+  transition:background var(--ease),color var(--ease);
+  color:var(--text2);font-size:12.5px;position:relative;
+  margin-bottom:1px;user-select:none;
+}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.on{background:rgba(0,229,255,.08);color:var(--accent)}
+.ni.on::before{
+  content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:3px;height:55%;background:var(--accent);border-radius:2px;
+}
+.ni .ico{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.ni .badge{
+  margin-left:auto;background:var(--danger);color:#fff;
+  font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;
+  font-family:var(--font-mono);
+}
+.sb-foot{padding:10px 8px;border-top:1px solid var(--border)}
+.sb-logout{
+  width:100%;padding:9px;background:transparent;
+  border:1px solid var(--border);color:var(--text3);border-radius:8px;
+  cursor:pointer;font-size:12px;transition:all var(--ease);
+  font-family:var(--font-body);
+}
+.sb-logout:hover{border-color:var(--danger);color:var(--danger);background:rgba(239,68,68,.04)}
+
+/* ═══ MAIN ═══════════════════════════════════════════════ */
+.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;min-width:0}
+.topbar{
+  padding:0 24px;height:54px;min-height:54px;
+  display:flex;align-items:center;gap:12px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+}
+.topbar-title{font-family:var(--font-head);font-size:16px;font-weight:800;color:var(--text)}
+.topbar-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+.live-dot{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent3);animation:pulse 2.2s infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(16,185,129,.4)}50%{opacity:.5;box-shadow:0 0 0 4px rgba(16,185,129,0)}}
+.vbadge{
+  font-family:var(--font-mono);font-size:10px;color:var(--text3);
+  padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;
+}
+.page{flex:1;overflow-y:auto;padding:22px 24px}
+.sec{display:none}
+.sec.on{display:block}
+
+/* ═══ SECURITY BANNER ════════════════════════════════════ */
+#secBanner{
+  background:rgba(239,68,68,.08);border-bottom:1px solid rgba(239,68,68,.25);
+  padding:7px 24px;font-size:12px;color:#fca5a5;
+  display:none;align-items:center;gap:8px;
+}
+#secBanner.on{display:flex}
+
+/* ═══ DEVTOOL OVERLAY ════════════════════════════════════ */
+#dtOverlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.97);z-index:9999;
+  display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:18px;text-align:center;
+  backdrop-filter:blur(8px);
+}
+#dtOverlay.on{display:flex}
+#dtOverlay h2{font-family:var(--font-head);font-size:26px;color:var(--danger)}
+#dtOverlay p{color:var(--text2);max-width:420px;font-size:14px;line-height:1.7}
+.dt-icon{font-size:56px;animation:shake .5s ease}
+@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+
+/* ═══ CARDS ══════════════════════════════════════════════ */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.card+.card{margin-top:0}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ct{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--text)}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+
+/* stat cards */
+.sc{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px;
+  display:flex;flex-direction:column;gap:6px;
+  position:relative;overflow:hidden;
+  transition:border-color var(--ease);
+}
+.sc:hover{border-color:var(--border2)}
+.sc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--hl,var(--accent))}
+.sc.g::after{--hl:var(--accent3)}
+.sc.p::after{--hl:var(--accent2)}
+.sc.a::after{--hl:var(--warning)}
+.sc.r::after{--hl:var(--danger)}
+.sc.b::after{--hl:var(--info)}
+.sl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.09em;font-weight:700}
+.sv{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--text);line-height:1}
+.ss{font-size:11px;color:var(--text3)}
+.si{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:26px;opacity:.12}
+
+/* ═══ TABLE ══════════════════════════════════════════════ */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:10px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.09em;padding:9px 13px;
+  border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--text2)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.015)}
+.tag{
+  display:inline-flex;align-items:center;
+  padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;
+  font-family:var(--font-mono);
+}
+.tag.g{background:rgba(16,185,129,.12);color:#34d399}
+.tag.r{background:rgba(239,68,68,.12);color:#f87171}
+.tag.b{background:rgba(0,229,255,.12);color:var(--accent)}
+.tag.p{background:rgba(139,92,246,.12);color:#a78bfa}
+.tag.a{background:rgba(245,158,11,.12);color:#fbbf24}
+.tag.gr{background:rgba(74,90,114,.15);color:var(--text3)}
+
+/* ═══ BUTTONS ════════════════════════════════════════════ */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:600;
+  border:none;cursor:pointer;transition:all var(--ease);
+  font-family:var(--font-body);white-space:nowrap;
+}
+.btn-p{background:var(--accent);color:#000}
+.btn-p:hover{background:#00cce6}
+.btn-d{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.25)}
+.btn-d:hover{background:rgba(239,68,68,.22)}
+.btn-gh{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-gh:hover{background:var(--surface2);color:var(--text)}
+.btn-s{background:rgba(16,185,129,.12);color:#34d399;border:1px solid rgba(16,185,129,.25)}
+.btn-s:hover{background:rgba(16,185,129,.22)}
+.btn-a{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.25)}
+.btn-sm{padding:5px 10px;font-size:11.5px}
+.btn-xs{padding:3px 8px;font-size:11px}
+
+/* ═══ TOOLBAR ════════════════════════════════════════════ */
+.tb{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.sbox{position:relative;flex:1;min-width:180px;max-width:320px}
+.sbox input{
+  width:100%;padding:8px 12px 8px 33px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:8px;color:var(--text);
+  font-size:12.5px;outline:none;transition:border-color var(--ease);
+  font-family:var(--font-body);
+}
+.sbox input:focus{border-color:var(--accent)}
+.sbox::before{
+  content:'⌕';position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  font-size:14px;color:var(--text3);pointer-events:none;
+}
+.fsel{
+  padding:8px 11px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:8px;
+  color:var(--text2);font-size:12.5px;outline:none;cursor:pointer;
+  font-family:var(--font-body);
+}
+.fsel:focus{border-color:var(--accent)}
+
+/* ═══ PAGINATION ═════════════════════════════════════════ */
+.pag{display:flex;align-items:center;gap:5px;margin-top:14px;justify-content:center}
+.pbtn{
+  padding:5px 10px;border-radius:6px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);font-size:11.5px;cursor:pointer;
+  transition:all var(--ease);font-family:var(--font-mono);
+}
+.pbtn:hover{background:var(--surface2);color:var(--text)}
+.pbtn.on{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
+.pbtn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ═══ FORM ════════════════════════════════════════════════ */
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fi{margin-bottom:13px}
+.fi label{display:block;font-size:10px;font-weight:700;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.fi input,.fi select,.fi textarea{
+  width:100%;padding:9px 12px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:12.5px;outline:none;
+  font-family:var(--font-body);transition:border-color var(--ease);
+}
+.fi textarea{resize:vertical;min-height:80px}
+.fi input:focus,.fi select:focus,.fi textarea:focus{border-color:var(--accent)}
+
+/* toggle */
+.twrap{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 0;border-bottom:1px solid var(--border);
+}
+.twrap:last-child{border-bottom:none}
+.tinfo .tl{font-size:13px;font-weight:600;color:var(--text)}
+.tinfo .td{font-size:11px;color:var(--text3);margin-top:2px}
+.tgl{position:relative;width:42px;height:22px;flex-shrink:0}
+.tgl input{opacity:0;width:0;height:0}
+.tslider{
+  position:absolute;inset:0;background:var(--surface3);
+  border-radius:22px;cursor:pointer;transition:.2s;border:1px solid var(--border);
+}
+.tslider::before{
+  content:'';position:absolute;height:16px;width:16px;
+  left:2px;bottom:2px;background:var(--text3);border-radius:50%;transition:.2s;
+}
+input:checked+.tslider{background:rgba(0,229,255,.15);border-color:var(--accent)}
+input:checked+.tslider::before{transform:translateX(20px);background:var(--accent)}
+
+/* ═══ MODAL ══════════════════════════════════════════════ */
+.mbg{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);
+  z-index:500;display:none;align-items:center;justify-content:center;
+}
+.mbg.on{display:flex}
+.modal{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:14px;width:580px;max-width:94vw;max-height:88vh;
+  overflow-y:auto;animation:fadeUp .2s ease;
+  box-shadow:0 32px 96px rgba(0,0,0,.5);
+}
+.mh{
+  padding:20px 22px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;
+  background:var(--surface);z-index:1;
+}
+.mt{font-family:var(--font-head);font-size:15px;font-weight:700}
+.mc{background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:2px;line-height:1}
+.mc:hover{color:var(--text)}
+.mb{padding:20px 22px}
+.mf{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+
+/* ═══ MAP ════════════════════════════════════════════════ */
+#geoMap{height:300px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border);margin-bottom:16px}
+.leaflet-container{background:#0f1218 !important}
+
+/* ═══ TOAST ══════════════════════════════════════════════ */
+#toasts{position:fixed;bottom:22px;right:22px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:10px;padding:11px 15px;font-size:12.5px;
+  display:flex;align-items:center;gap:10px;max-width:320px;
+  animation:tIn .3s cubic-bezier(.16,1,.3,1);pointer-events:all;
+  box-shadow:0 8px 28px rgba(0,0,0,.4);
+}
+@keyframes tIn{from{transform:translateX(110%);opacity:0}to{transform:none;opacity:1}}
+.toast.s{border-color:rgba(16,185,129,.35);color:#34d399}
+.toast.e{border-color:rgba(239,68,68,.35);color:#f87171}
+.toast.i{border-color:rgba(0,229,255,.35);color:var(--accent)}
+.toast.w{border-color:rgba(245,158,11,.35);color:#fbbf24}
+
+/* ═══ LOADERS ════════════════════════════════════════════ */
+.ld{display:flex;align-items:center;justify-content:center;padding:36px;color:var(--text3);gap:10px}
+.spin{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .6s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{padding:36px;text-align:center;color:var(--text3)}
+.empty p{font-size:13px;margin-top:8px}
+
+/* chart containers */
+.ch-box{position:relative;height:210px}
+.ch-sm{height:160px}
+
+/* ═══ RESPONSIVE ═════════════════════════════════════════ */
+@media(max-width:1200px){.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.g3{grid-template-columns:1fr 1fr}.fr{grid-template-columns:1fr}}
+@media(max-width:700px){.g4,.g3,.g2{grid-template-columns:1fr}.sb{position:fixed;left:-100%;transition:.3s;z-index:200}.sb.on{left:0}}
+</style>
+</head>
+<body>
+
+<!-- DevTool Overlay -->
+<div id="dtOverlay">
+  <div class="dt-icon">🔐</div>
+  <h2>Security Violation Detected</h2>
+  <p>Opening Developer Tools is not permitted in the Admin Console. This incident has been logged including your IP address, session details, and timestamp.</p>
+  <p style="font-family:var(--font-mono);font-size:11px;color:var(--text3)">Your session has been terminated. Contact the super-admin if this was a mistake.</p>
+</div>
+
+<!-- Toasts -->
+<div id="toasts"></div>
+
+<!-- ═══ LOGIN ════════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="lcard">
+    <div class="llogo">
+      <div class="llogo-ico">🛡</div>
+      <div>
+        <div class="llogo-text">Admin Console</div>
+        <div class="llogo-sub">managemcq.sharepremium.in</div>
+      </div>
+    </div>
+    <div class="lerr" id="loginErr"></div>
+    <div class="lfield"><label>Username</label>
+      <input id="lu" type="text" autocomplete="username" placeholder="admin" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="lfield"><label>Password</label>
+      <input id="lp" type="password" autocomplete="current-password" placeholder="••••••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="lfield"><label>Authenticator Code (TOTP)</label>
+      <input id="lt" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code" onkeydown="if(event.key==='Enter')doLogin()"/>
+      <div class="lhint">Open Google Authenticator → SolveMCQ Admin</div>
+    </div>
+    <button class="lbtn" id="loginBtn" onclick="doLogin()">Sign In Securely →</button>
+    <div class="lsec">🔒 All access is logged and monitored</div>
+  </div>
+</div>
+
+<!-- ═══ APP ══════════════════════════════════════════════ -->
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sb" id="sb">
+    <div class="sb-logo">
+      <div class="sb-ico">📊</div>
+      <div class="sb-brand">SolveMCQ <span>Admin Console v1.0</span></div>
+    </div>
+    <div class="sb-admin">
+      <div class="sb-av" id="sbAv">A</div>
+      <div>
+        <div class="sb-aname" id="sbName">Admin</div>
+        <div class="sb-arole" id="sbRole">superadmin</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="ns">Overview</div>
+      <div class="ni on" onclick="go('overview')"><span class="ico">📊</span>Dashboard</div>
+      <div class="ni" onclick="go('traffic')"><span class="ico">🌍</span>Traffic &amp; Geo</div>
+
+      <div class="ns">Management</div>
+      <div class="ni" onclick="go('users')"><span class="ico">👥</span>Users</div>
+      <div class="ni" onclick="go('questions')"><span class="ico">📝</span>Questions</div>
+      <div class="ni" onclick="go('notifications')">
+        <span class="ico">🔔</span>Notifications
+        <span class="badge" id="nBadge" style="display:none">0</span>
+      </div>
+
+      <div class="ns">Security</div>
+      <div class="ni" onclick="go('blocklist')"><span class="ico">🚫</span>Blocklist</div>
+      <div class="ni" onclick="go('devlogs')"><span class="ico">🕵️</span>DevTool Logs</div>
+      <div class="ni" onclick="go('audit')"><span class="ico">📋</span>Audit Log</div>
+
+      <div class="ns">System</div>
+      <div class="ni" onclick="go('maintenance')"><span class="ico">🔧</span>Maintenance</div>
+      <div class="ni" onclick="go('version')"><span class="ico">🚀</span>Version</div>
+      <div class="ni" onclick="go('features')"><span class="ico">🎛</span>Feature Flags</div>
+      <div class="ni" onclick="go('admins')"><span class="ico">🔑</span>Admin Users</div>
+    </nav>
+    <div class="sb-foot">
+      <button class="sb-logout" onclick="doLogout()">⏻ Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div id="secBanner"><span>⚠</span><span id="secMsg"></span></div>
+    <div class="topbar">
+      <div class="topbar-title" id="pgTitle">Dashboard</div>
+      <div class="topbar-right">
+        <div class="live-dot"><div class="dot"></div>Live</div>
+        <div class="vbadge" id="vBadge">v8.26</div>
+      </div>
+    </div>
+    <div class="page">
+
+      <!-- ── OVERVIEW ──────────────────────────────────────────── -->
+      <div class="sec on" id="s-overview">
+        <div class="g4">
+          <div class="sc"><div class="sl">Total Users</div><div class="sv" id="ov-users">—</div><div class="ss">All registered</div><div class="si">👥</div></div>
+          <div class="sc g"><div class="sl">New Today</div><div class="sv" id="ov-new">—</div><div class="ss">Last 24 h</div><div class="si">✨</div></div>
+          <div class="sc p"><div class="sl">Active Sessions</div><div class="sv" id="ov-sess">—</div><div class="ss">Last 30 min</div><div class="si">🟢</div></div>
+          <div class="sc r"><div class="sl">CORS Violations</div><div class="sv" id="ov-cors">—</div><div class="ss">Last 24 h</div><div class="si">🚨</div></div>
+        </div>
+        <div class="g3">
+          <div class="sc a"><div class="sl">Total Questions</div><div class="sv" id="ov-q">—</div><div class="ss">In database</div><div class="si">📝</div></div>
+          <div class="sc r"><div class="sl">DevTool Detections</div><div class="sv" id="ov-dt">—</div><div class="ss">Today</div><div class="si">🕵️</div></div>
+          <div class="sc b"><div class="sl">Notifications</div><div class="sv" id="ov-notif">—</div><div class="ss">Unread</div><div class="si">🔔</div></div>
+        </div>
+        <div class="g2">
+          <div class="card"><div class="ch"><div class="ct">Auth Method Breakdown</div></div><div class="ch-box"><canvas id="authChart"></canvas></div></div>
+          <div class="card"><div class="ch"><div class="ct">User Growth (7 days)</div></div><div class="ch-box"><canvas id="growthChart"></canvas></div></div>
+        </div>
+      </div>
+
+      <!-- ── TRAFFIC ───────────────────────────────────────────── -->
+      <div class="sec" id="s-traffic">
+        <div class="tb">
+          <span style="font-family:var(--font-head);font-size:15px;font-weight:800">Traffic Analytics</span>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button class="btn btn-gh btn-sm" onclick="loadTraffic('1d')">1D</button>
+            <button class="btn btn-gh btn-sm" onclick="loadTraffic('7d')">7D</button>
+            <button class="btn btn-gh btn-sm" onclick="loadTraffic('30d')">30D</button>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="card"><div class="ch"><div class="ct">Daily Requests</div></div><div class="ch-box"><canvas id="dailyChart"></canvas></div></div>
+          <div class="card"><div class="ch"><div class="ct">Top Endpoints</div></div><div class="ch-box"><canvas id="routeChart"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">🌍 Geographic Distribution</div></div>
+          <div id="geoMap"></div>
+          <div id="geoTable"></div>
+        </div>
+      </div>
+
+      <!-- ── USERS ─────────────────────────────────────────────── -->
+      <div class="sec" id="s-users">
+        <div class="tb">
+          <div class="sbox"><input id="uSearch" placeholder="Search email, name, ID…" oninput="debouncedUserSearch()"/></div>
+          <select class="fsel" id="uFilter" onchange="loadUsers(1)">
+            <option value="all">All Users</option><option value="active">Active</option>
+            <option value="banned">Banned</option><option value="google">Google</option>
+            <option value="github">GitHub</option><option value="phone">Phone OTP</option>
+            <option value="email">Email/Password</option>
+          </select>
+          <select class="fsel" id="uSort" onchange="loadUsers(1)">
+            <option value="createdAt">Newest</option><option value="email">Email</option><option value="name">Name</option>
+          </select>
+        </div>
+        <div class="card">
+          <div class="tw"><table>
+            <thead><tr><th>User</th><th>Auth</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+            <tbody id="uTbl"><tr><td colspan="5"><div class="ld"><div class="spin"></div>Loading…</div></td></tr></tbody>
+          </table></div>
+          <div class="pag" id="uPag"></div>
+        </div>
+      </div>
+
+      <!-- ── QUESTIONS ─────────────────────────────────────────── -->
+      <div class="sec" id="s-questions">
+        <div class="tb">
+          <div class="sbox"><input id="qSearch" placeholder="Search questions…" oninput="debouncedQSearch()"/></div>
+          <input class="fsel" id="qSubj" placeholder="Subject" style="width:110px" oninput="loadQuestions(1)"/>
+          <input class="fsel" id="qTopic" type="number" placeholder="Topic ID" style="width:95px" oninput="loadQuestions(1)"/>
+          <button class="btn btn-p btn-sm" onclick="openQModal()">+ Add Question</button>
+        </div>
+        <div class="card">
+          <div class="tw"><table>
+            <thead><tr><th>#</th><th>Question</th><th>Subject</th><th>Topic</th><th>Options</th><th>Actions</th></tr></thead>
+            <tbody id="qTbl"><tr><td colspan="6"><div class="ld"><div class="spin"></div>Loading…</div></td></tr></tbody>
+          </table></div>
+          <div class="pag" id="qPag"></div>
+        </div>
+      </div>
+
+      <!-- ── NOTIFICATIONS ──────────────────────────────────────── -->
+      <div class="sec" id="s-notifications">
+        <div class="g2">
+          <div class="card">
+            <div class="ch"><div class="ct">Send New Notification</div></div>
+            <div class="fi"><label>Notification ID (e.g. N7)</label><input id="nId" placeholder="N7"/></div>
+            <div class="fi"><label>Type</label><select id="nType"><option value="info">Info</option><option value="warning">Warning</option><option value="success">Success</option></select></div>
+            <div class="fi"><label>Message Text</label><textarea id="nText" rows="3" placeholder="What should users see?"></textarea></div>
+            <button class="btn btn-p" onclick="sendNotif()">📢 Send Notification</button>
+          </div>
+          <div class="card">
+            <div class="ch"><div class="ct">Active Notifications</div><button class="btn btn-gh btn-sm" onclick="loadNotifs()">↻ Refresh</button></div>
+            <div id="nList"><div class="ld"><div class="spin"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── BLOCKLIST ──────────────────────────────────────────── -->
+      <div class="sec" id="s-blocklist">
+        <div class="tb">
+          <span style="font-family:var(--font-head);font-weight:800;font-size:15px">IP Blocklist</span>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <input id="banIp" class="fsel" placeholder="IP address" style="width:140px"/>
+            <input id="banReason" class="fsel" placeholder="Reason" style="width:160px"/>
+            <button class="btn btn-d btn-sm" onclick="banIP()">🚫 Perm Ban</button>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="card">
+            <div class="ch"><div class="ct">CORS Auto-Blocked</div><button class="btn btn-gh btn-sm" onclick="loadBlocklist()">↻</button></div>
+            <div class="tw"><table>
+              <thead><tr><th>IP</th><th>Type</th><th>TTL</th><th>Violations</th><th>Action</th></tr></thead>
+              <tbody id="corsBlTbl"><tr><td colspan="5"><div class="ld"><div class="spin"></div></div></td></tr></tbody>
+            </table></div>
+          </div>
+          <div class="card">
+            <div class="ch"><div class="ct">Manual Bans</div></div>
+            <div class="tw"><table>
+              <thead><tr><th>IP</th><th>Reason</th><th>By</th><th>Action</th></tr></thead>
+              <tbody id="manBanTbl"><tr><td colspan="4"><div class="ld"><div class="spin"></div></div></td></tr></tbody>
+            </table></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Recent CORS Violations Log</div><button class="btn btn-gh btn-sm" onclick="loadCorsLog()">↻ Refresh</button></div>
+          <div class="tw"><table>
+            <thead><tr><th>Time</th><th>IP</th><th>Origin</th><th>Path</th><th>User-Agent</th></tr></thead>
+            <tbody id="corsLogTbl"><tr><td colspan="5"><div class="ld"><div class="spin"></div></div></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- ── DEVTOOL LOGS ────────────────────────────────────────── -->
+      <div class="sec" id="s-devlogs">
+        <div class="card">
+          <div class="ch">
+            <div class="ct">🕵️ DevTools Detection Log</div>
+            <span class="tag r" id="dtCount">0 incidents</span>
+          </div>
+          <div class="tw"><table>
+            <thead><tr><th>Time</th><th>Admin</th><th>IP</th><th>Method</th><th>Detail</th><th>User-Agent</th></tr></thead>
+            <tbody id="dtTbl"><tr><td colspan="6"><div class="ld"><div class="spin"></div></div></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- ── AUDIT LOG ──────────────────────────────────────────── -->
+      <div class="sec" id="s-audit">
+        <div class="tb">
+          <div class="sbox"><input id="auSearch" placeholder="Filter by action…" oninput="loadAudit(1)"/></div>
+          <select class="fsel" id="auFilter" onchange="loadAudit(1)">
+            <option value="">All Actions</option>
+            <option value="LOGIN">Login events</option>
+            <option value="USER">User actions</option>
+            <option value="QUESTION">Question changes</option>
+            <option value="BLOCK">Block actions</option>
+            <option value="DEVTOOLS">DevTools incidents</option>
+          </select>
+        </div>
+        <div class="card">
+          <div class="tw"><table>
+            <thead><tr><th>Time</th><th>Action</th><th>Admin</th><th>IP</th><th>Details</th></tr></thead>
+            <tbody id="auTbl"><tr><td colspan="5"><div class="ld"><div class="spin"></div></div></td></tr></tbody>
+          </table></div>
+          <div class="pag" id="auPag"></div>
+        </div>
+      </div>
+
+      <!-- ── MAINTENANCE ────────────────────────────────────────── -->
+      <div class="sec" id="s-maintenance">
+        <div class="g2">
+          <div class="card">
+            <div class="ch"><div class="ct">🔧 Maintenance Mode</div></div>
+            <div class="twrap">
+              <div class="tinfo"><div class="tl">Enable Maintenance Mode</div><div class="td">All users see a maintenance overlay when ON</div></div>
+              <label class="tgl"><input type="checkbox" id="mToggle"/><span class="tslider"></span></label>
+            </div>
+            <div class="fi" style="margin-top:16px"><label>Start Time (IST) — YYYY-MM-DD HH:MM</label><input id="mStart" placeholder="2026-06-01 02:00"/></div>
+            <div class="fi"><label>Estimated Completion (shown to users)</label><input id="mETA" placeholder="4:00 AM IST"/></div>
+            <button class="btn btn-p" onclick="saveMaintenance()">💾 Save Config</button>
+          </div>
+          <div class="card">
+            <div class="ch"><div class="ct">ℹ Maintenance Info</div></div>
+            <div style="color:var(--text2);font-size:13px;line-height:1.9">
+              <p>1. Set status <strong>ON</strong> and pick a future IST start time.</p>
+              <p>2. Save config — this updates the DB record.</p>
+              <p>3. Your frontend reads this at page load via <code>/api/config</code> (you need to wire this endpoint to read from DB, or keep using the static <code>config.js</code> approach).</p>
+              <p>4. To end maintenance, flip to <strong>OFF</strong> and save.</p>
+              <p style="margin-top:12px;color:var(--text3);font-size:12px">Note: The current frontend uses static <code>config.js</code> values. To enable DB-driven maintenance, add a <code>GET /api/public/config</code> route that reads from <code>system_config</code>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VERSION ────────────────────────────────────────────── -->
+      <div class="sec" id="s-version">
+        <div class="g2">
+          <div class="card">
+            <div class="ch"><div class="ct">🚀 Version Management</div></div>
+            <div class="fr">
+              <div class="fi"><label>Current Version</label><input id="vCur" type="number" step="0.01" placeholder="8.26"/></div>
+              <div class="fi"><label>Previous Version</label><input id="vPrev" type="number" step="0.01" placeholder="8.23"/></div>
+            </div>
+            <div class="fi"><label>Changelog / Release Notes</label><textarea id="vLog" rows="5" placeholder="What changed in this release…"></textarea></div>
+            <button class="btn btn-p" onclick="saveVersion()">🚀 Update Version Record</button>
+          </div>
+          <div class="card" style="background:var(--surface2)">
+            <div class="ct" style="margin-bottom:14px">Deploy checklist</div>
+            <ol style="padding-left:18px;color:var(--text2);font-size:13px;line-height:2.1">
+              <li>Update version numbers above → Save</li>
+              <li>Edit <code>js/version.js</code> in your frontend repo:<br>Set <code>APP_VERSION</code> and <code>PREV_APP_VERSION</code></li>
+              <li>Deploy frontend → SW cache busts automatically</li>
+              <li>Users see <strong>"Update Now"</strong> toast on next visit</li>
+              <li>Verify: open site in incognito → check toast appears</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── FEATURE FLAGS ──────────────────────────────────────── -->
+      <div class="sec" id="s-features">
+        <div class="card">
+          <div class="ch"><div class="ct">🎛 Feature Flags</div><span style="font-size:11px;color:var(--text3)">Changes take effect on frontend redeploy</span></div>
+          <div id="ffList"><div class="ld"><div class="spin"></div></div></div>
+          <button class="btn btn-p" style="margin-top:16px" onclick="saveFeatures()">💾 Save Feature Flags</button>
+        </div>
+      </div>
+
+      <!-- ── ADMIN USERS ─────────────────────────────────────────── -->
+      <div class="sec" id="s-admins">
+        <div class="tb">
+          <span style="font-family:var(--font-head);font-weight:800;font-size:15px">Admin Users</span>
+          <button class="btn btn-p btn-sm" style="margin-left:auto" onclick="openAdminModal()">+ Add Admin</button>
+        </div>
+        <div class="card">
+          <div class="tw"><table>
+            <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="admTbl"><tr><td colspan="5"><div class="ld"><div class="spin"></div></div></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+    </div><!-- /page -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODALS -->
+<!-- User Detail -->
+<div class="mbg" id="mUser"><div class="modal" style="width:660px">
+  <div class="mh"><div class="mt">User Details</div><button class="mc" onclick="closeM('mUser')">✕</button></div>
+  <div class="mb" id="mUserBody"></div>
+  <div class="mf" id="mUserFoot"></div>
+</div></div>
+
+<!-- Question -->
+<div class="mbg" id="mQ"><div class="modal" style="width:660px">
+  <div class="mh"><div class="mt" id="mQTitle">Add Question</div><button class="mc" onclick="closeM('mQ')">✕</button></div>
+  <div class="mb">
+    <div class="fi"><label>Question Text</label><textarea id="qTxt" rows="3"></textarea></div>
+    <div id="qOpts"></div>
+    <div class="fr">
+      <div class="fi"><label>Correct Option Index (0 = A, 1 = B…)</label><input id="qCorr" type="number" min="0" max="4"/></div>
+      <div class="fi"><label>Subject Key</label><input id="qSF"/></div>
+    </div>
+    <div class="fr">
+      <div class="fi"><label>Topic ID</label><input id="qTF" type="number"/></div>
+      <div class="fi"><label>Image URL (optional)</label><input id="qImg" placeholder="https://…"/></div>
+    </div>
+    <div class="fi"><label>Explanation</label><textarea id="qExp" rows="3"></textarea></div>
+  </div>
+  <div class="mf"><button class="btn btn-gh" onclick="closeM('mQ')">Cancel</button><button class="btn btn-p" onclick="saveQuestion()">Save Question</button></div>
+</div></div>
+
+<!-- Add Admin -->
+<div class="mbg" id="mAdm"><div class="modal">
+  <div class="mh"><div class="mt">Add Admin User</div><button class="mc" onclick="closeM('mAdm')">✕</button></div>
+  <div class="mb">
+    <div class="fr">
+      <div class="fi"><label>Username</label><input id="aUser"/></div>
+      <div class="fi"><label>Display Name</label><input id="aName"/></div>
+    </div>
+    <div class="fr">
+      <div class="fi"><label>Password (min 12 chars)</label><input id="aPass" type="password"/></div>
+      <div class="fi"><label>Role</label>
+        <select id="aRole"><option value="admin">Admin</option><option value="editor">Editor</option><option value="viewer">Viewer</option></select>
+      </div>
+    </div>
+    <div class="card" id="aTOTP" style="display:none;background:var(--surface2);margin-top:14px">
+      <p style="color:var(--accent3);font-size:13px;font-weight:600;margin-bottom:8px">✅ Admin created! Share these details securely:</p>
+      <p style="font-family:var(--font-mono);font-size:12px;word-break:break-all;color:var(--text);line-height:1.8" id="aTOTPText"></p>
+    </div>
+  </div>
+  <div class="mf"><button class="btn btn-gh" onclick="closeM('mAdm')">Close</button><button class="btn btn-p" onclick="createAdmin()">Create Admin</button></div>
+</div></div>
+
+<!-- ═══════════════════════ SCRIPT ══════════════════════════════ -->
+<script>
+// ── CONFIG ────────────────────────────────────────────────────
+const API = 'https://api.sharepremium.in/admin-api';
+// Dev: const API = 'http://localhost:3001/admin-api';
+
+// ── STATE ─────────────────────────────────────────────────────
+let uPage=1, qPage=1, auPage=1;
+let editQId=null, dtDetected=false;
+let features={};
+let authCh,growthCh,dailyCh,routeCh;
+let geoMap=null, geoMarkers=[];
+let searchT=null;
+
+// ── FETCH ─────────────────────────────────────────────────────
+async function api(method,path,body){
+  const o={method,credentials:'include',headers:{'Content-Type':'application/json'}};
+  if(body) o.body=JSON.stringify(body);
+  const r=await fetch(API+path,o);
+  if(r.status===401){toast('Session expired — please log in again','e');setTimeout(()=>location.reload(),1800);throw new Error('401');}
+  return r.json();
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────
+async function doLogin(){
+  const btn=document.getElementById('loginBtn');
+  const err=document.getElementById('loginErr');
+  const u=document.getElementById('lu').value.trim();
+  const p=document.getElementById('lp').value;
+  const t=document.getElementById('lt').value.trim();
+  err.classList.remove('show');
+  if(!u||!p||!t){showLErr('All fields are required.');return;}
+  btn.disabled=true;btn.textContent='Authenticating…';
+  try{
+    const r=await fetch(API+'/auth/login',{method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,totp:t})});
+    const d=await r.json();
+    if(!r.ok){showLErr(d.error||'Login failed.');return;}
+    // Set admin info
+    document.getElementById('sbName').textContent=d.admin.name||d.admin.username;
+    document.getElementById('sbRole').textContent=d.admin.role;
+    document.getElementById('sbAv').textContent=(d.admin.name||d.admin.username)[0].toUpperCase();
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').classList.add('on');
+    initApp();
+    toast('Welcome, '+(d.admin.name||d.admin.username)+' ✓','s');
+  }catch(e){if(e.message!=='401')showLErr('Connection failed. Is admin server running?');}
+  finally{btn.disabled=false;btn.textContent='Sign In Securely →';}
+}
+function showLErr(m){const e=document.getElementById('loginErr');e.textContent=m;e.classList.add('show');}
+async function doLogout(){
+  await fetch(API+'/auth/logout',{method:'POST',credentials:'include'}).catch(()=>{});
+  location.reload();
+}
+
+// ── DEVTOOL DETECTION ─────────────────────────────────────────
+function startDTDetection(){
+  // Method 1: window size heuristic
+  setInterval(()=>{
+    const wDiff=window.outerWidth-window.innerWidth;
+    const hDiff=window.outerHeight-window.innerHeight;
+    if((wDiff>200||hDiff>200)&&!dtDetected) triggerDT('window_size');
+  },1200);
+
+  // Method 2: performance timing on console access
+  const _c=console.log.bind(console);
+  let dtImg=new Image();
+  Object.defineProperty(dtImg,'id',{get:()=>{if(!dtDetected)triggerDT('console_image');}});
+  setInterval(()=>{ try{_c('%c',dtImg);}catch(e){} },3500);
+
+  // Method 3: firebug
+  if(window.Firebug&&window.Firebug.chrome&&window.Firebug.chrome.isInitialized) triggerDT('firebug');
+}
+
+async function triggerDT(method){
+  if(dtDetected) return;
+  dtDetected=true;
+  try{
+    await fetch(API+'/security/devtools-detected',{
+      method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({method,detail:`Detected via ${method}`})
+    });
+  }catch(e){}
+  document.getElementById('dtOverlay').classList.add('on');
+  document.getElementById('app').style.visibility='hidden';
+}
+
+// ── SECURITY HEARTBEAT ────────────────────────────────────────
+async function heartbeat(){
+  try{
+    const d=await api('GET','/security/status');
+    if(d.suspended&&!dtDetected){
+      dtDetected=true;
+      document.getElementById('dtOverlay').classList.add('on');
+      document.getElementById('app').style.visibility='hidden';
+    }
+  }catch(e){}
+}
+
+// ── APP INIT ──────────────────────────────────────────────────
+function initApp(){
+  loadOverview();
+  startDTDetection();
+  setInterval(heartbeat,45000);
+  setInterval(loadOverview,30000);
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────
+const titles={
+  overview:'Dashboard Overview',traffic:'Traffic & Geo Analytics',
+  users:'User Management',questions:'Question Management',
+  notifications:'Notification Manager',blocklist:'IP Blocklist',
+  devlogs:'DevTools Detection Log',audit:'Audit Log',
+  maintenance:'System Maintenance',version:'Version Management',
+  features:'Feature Flags',admins:'Admin Users'
+};
+function go(sec){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  const el=document.getElementById('s-'+sec);
+  if(el) el.classList.add('on');
+  document.querySelectorAll('.ni').forEach(n=>{
+    if(n.getAttribute('onclick')===`go('${sec}')`) n.classList.add('on');
+  });
+  document.getElementById('pgTitle').textContent=titles[sec]||sec;
+  // Load data for section
+  const loaders={
+    users:()=>loadUsers(1), questions:()=>loadQuestions(1),
+    blocklist:loadBlocklist, audit:()=>loadAudit(1),
+    devlogs:loadDTLogs, maintenance:loadMaintenance,
+    version:loadVersion, features:loadFeatures,
+    admins:loadAdmins, notifications:loadNotifs,
+    traffic:()=>loadTraffic('7d')
+  };
+  if(loaders[sec]) loaders[sec]();
+}
+
+// ── OVERVIEW ──────────────────────────────────────────────────
+async function loadOverview(){
+  try{
+    const d=await api('GET','/dashboard/overview');
+    $('ov-users',d.totalUsers?.toLocaleString()||'0');
+    $('ov-new',d.newUsersToday||'0');
+    $('ov-sess',d.activeSessions||'0');
+    $('ov-cors',d.corsViolations24h||'0');
+    $('ov-q',d.totalQuestions||'0');
+    $('ov-dt',d.devtoolsToday||'0');
+    $('ov-notif',d.pendingNotifs||'0');
+    if(d.pendingNotifs>0){$('nBadge',d.pendingNotifs);document.getElementById('nBadge').style.display='flex';}
+    drawAuthChart(d.authMethods||[]);
+    loadTrafficOverview();
+  }catch(e){console.error('overview',e);}
+}
+function $(id,val){const e=document.getElementById(id);if(e)e.textContent=val;}
+
+async function loadTrafficOverview(){
+  try{
+    const d=await api('GET','/stats/traffic?range=7d');
+    drawGrowthChart(d.userGrowth||[]);
+  }catch(e){}
+}
+
+function drawAuthChart(data){
+  const ctx=document.getElementById('authChart').getContext('2d');
+  if(authCh) authCh.destroy();
+  const labels=data.map(d=>d._id||'email');
+  const vals=data.map(d=>d.count);
+  authCh=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data:vals,
+    backgroundColor:['#00e5ff','#8b5cf6','#10b981','#f59e0b','#ef4444','#3b82f6'],
+    borderWidth:0,hoverOffset:5}]},
+    options:{plugins:{legend:{position:'right',labels:{color:'#8899b4',font:{family:"'DM Sans'",size:12}}}},
+    cutout:'68%',responsive:true,maintainAspectRatio:false}});
+}
+function drawGrowthChart(data){
+  const ctx=document.getElementById('growthChart').getContext('2d');
+  if(growthCh) growthCh.destroy();
+  growthCh=new Chart(ctx,{type:'line',data:{
+    labels:data.map(g=>g._id),
+    datasets:[{label:'New Users',data:data.map(g=>g.count),borderColor:'#10b981',
+      backgroundColor:'rgba(16,185,129,.1)',tension:.4,fill:true,pointRadius:3}]
+  },options:cOpts()});
+}
+
+// ── TRAFFIC ───────────────────────────────────────────────────
+async function loadTraffic(range){
+  try{
+    const d=await api('GET',`/stats/traffic?range=${range}`);
+    drawDailyChart(d.daily||[]);
+    drawRouteChart(d.topRoutes||[]);
+    drawGeoMap(d.geo||[]);
+  }catch(e){console.error('traffic',e);}
+}
+function drawDailyChart(data){
+  const ctx=document.getElementById('dailyChart').getContext('2d');
+  if(dailyCh) dailyCh.destroy();
+  dailyCh=new Chart(ctx,{type:'bar',data:{
+    labels:data.map(d=>d.date),
+    datasets:[
+      {label:'Requests',data:data.map(d=>d.count),backgroundColor:'rgba(0,229,255,.25)',borderColor:'#00e5ff',borderWidth:1},
+      {label:'Unique IPs',data:data.map(d=>d.uniqueIPs),backgroundColor:'rgba(139,92,246,.25)',borderColor:'#8b5cf6',borderWidth:1}
+    ]
+  },options:cOpts()});
+}
+function drawRouteChart(data){
+  const ctx=document.getElementById('routeChart').getContext('2d');
+  if(routeCh) routeCh.destroy();
+  routeCh=new Chart(ctx,{type:'bar',data:{
+    labels:data.map(r=>r._id),
+    datasets:[{label:'Hits',data:data.map(r=>r.count),backgroundColor:'rgba(245,158,11,.3)',borderColor:'#f59e0b',borderWidth:1}]
+  },options:{...cOpts(),indexAxis:'y',plugins:{legend:{display:false}}}});
+}
+function cOpts(){
+  return{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#8899b4',font:{family:"'DM Sans'",size:11}}}},
+    scales:{x:{ticks:{color:'#4a5a72',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+            y:{ticks:{color:'#4a5a72',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}}}};
+}
+function drawGeoMap(data){
+  if(!geoMap){
+    geoMap=L.map('geoMap',{zoomControl:true,attributionControl:false}).setView([20,0],2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(geoMap);
+  }
+  geoMarkers.forEach(m=>geoMap.removeLayer(m));
+  geoMarkers=[];
+  const max=Math.max(...data.map(d=>d.count),1);
+  data.forEach(d=>{
+    if(!d.lat&&!d.lon) return;
+    const r=Math.max(6,Math.min(40,(d.count/max)*40));
+    const m=L.circleMarker([d.lat,d.lon],{
+      radius:r,color:'#00e5ff',fillColor:'#00e5ff',fillOpacity:.4,weight:1
+    }).bindPopup(`<b>${d._id}</b><br>${d.count.toLocaleString()} requests`).addTo(geoMap);
+    geoMarkers.push(m);
+  });
+  // Geo table
+  const html=`<table><thead><tr><th>Country</th><th>Code</th><th>Requests</th></tr></thead>
+    <tbody>${data.slice(0,15).map(d=>`<tr><td>${d._id}</td><td><span class="tag b">${d.countryCode||'??'}</span></td><td>${d.count.toLocaleString()}</td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('geoTable').innerHTML=html;
+}
+
+// ── USERS ─────────────────────────────────────────────────────
+async function loadUsers(page){
+  uPage=page||uPage;
+  const search=document.getElementById('uSearch').value;
+  const filter=document.getElementById('uFilter').value;
+  const sort=document.getElementById('uSort').value;
+  const tbl=document.getElementById('uTbl');
+  tbl.innerHTML=`<tr><td colspan="5"><div class="ld"><div class="spin"></div>Loading…</div></td></tr>`;
+  try{
+    const d=await api('GET',`/users?page=${uPage}&limit=50&search=${encodeURIComponent(search)}&filter=${filter}&sort=${sort}`);
+    if(!d.users?.length){tbl.innerHTML=`<tr><td colspan="5"><div class="empty"><div>👤</div><p>No users found</p></div></td></tr>`;renderPag('uPag',0,1,1);return;}
+    tbl.innerHTML=d.users.map(u=>`
+      <tr>
+        <td>
+          <div style="font-weight:600;color:var(--text)">${esc(u.name||'—')}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">${esc(u.email||u.phone||'')}</div>
+        </td>
+        <td><span class="tag ${authTag(u.authProvider)}">${u.authProvider||'email'}</span></td>
+        <td><span class="tag ${u.banned?'r':'g'}">${u.banned?'Banned':'Active'}</span></td>
+        <td style="font-size:11px;font-family:var(--font-mono)">${fmtDate(u.createdAt)}</td>
+        <td>
+          <button class="btn btn-gh btn-xs" onclick="viewUser('${u.userId}')">View</button>
+          ${u.banned
+            ?`<button class="btn btn-s btn-xs" onclick="unbanUser('${u.userId}')">Unban</button>`
+            :`<button class="btn btn-d btn-xs" onclick="banUser('${u.userId}')">Ban</button>`}
+          <button class="btn btn-d btn-xs" onclick="delUser('${u.userId}')">Delete</button>
+        </td>
+      </tr>`).join('');
+    renderPag('uPag',d.total,uPage,d.pages,(p)=>loadUsers(p));
+  }catch(e){tbl.innerHTML=`<tr><td colspan="5"><div class="empty"><p>Error loading users</p></div></td></tr>`;}
+}
+function debouncedUserSearch(){clearTimeout(searchT);searchT=setTimeout(()=>loadUsers(1),400);}
+function authTag(p){const m={google:'b',github:'p',phone:'a',email:'g',apple:'gr'};return m[p]||'g';}
+
+async function viewUser(uid){
+  try{
+    const d=await api('GET',`/users/${uid}`);
+    const u=d.user;
+    document.getElementById('mUserBody').innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div><div class="sl">Name</div><div style="color:var(--text);font-weight:600">${esc(u.name||'—')}</div></div>
+        <div><div class="sl">Email</div><div style="font-family:var(--font-mono);font-size:12px">${esc(u.email||'—')}</div></div>
+        <div><div class="sl">Phone</div><div>${esc(u.phone||'—')}</div></div>
+        <div><div class="sl">Auth</div><span class="tag ${authTag(u.authProvider)}">${u.authProvider||'email'}</span></div>
+        <div><div class="sl">User ID</div><div style="font-family:var(--font-mono);font-size:11px">${u.userId}</div></div>
+        <div><div class="sl">Joined</div><div style="font-size:12px">${fmtDate(u.createdAt)}</div></div>
+        <div><div class="sl">Status</div><span class="tag ${u.banned?'r':'g'}">${u.banned?'Banned':'Active'}</span></div>
+        ${u.banned?`<div><div class="sl">Ban Reason</div><div style="color:#f87171;font-size:12px">${esc(u.banReason||'—')}</div></div>`:''}
+      </div>
+      ${Object.keys(d.progress||{}).length?`<div style="margin-bottom:12px"><div class="sl">Progress topics tracked</div><div style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">${Object.keys(d.progress).length} topics</div></div>`:''}
+    `;
+    document.getElementById('mUserFoot').innerHTML=`
+      <button class="btn btn-gh" onclick="closeM('mUser')">Close</button>
+      ${u.banned
+        ?`<button class="btn btn-s" onclick="unbanUser('${u.userId}');closeM('mUser')">Unban User</button>`
+        :`<button class="btn btn-d" onclick="banUser('${u.userId}');closeM('mUser')">Ban User</button>`}
+      <button class="btn btn-d" onclick="resetPW('${u.userId}')">Reset Password</button>
+      <button class="btn btn-d" onclick="delUser('${u.userId}');closeM('mUser')">Delete</button>
+    `;
+    openM('mUser');
+  }catch(e){toast('Failed to load user','e');}
+}
+async function banUser(uid){
+  const r=prompt('Ban reason:');if(r===null) return;
+  try{await api('POST',`/users/${uid}/ban`,{reason:r});toast('User banned','s');loadUsers();}
+  catch(e){toast('Error banning user','e');}
+}
+async function unbanUser(uid){
+  try{await api('POST',`/users/${uid}/unban`,{});toast('User unbanned','s');loadUsers();}
+  catch(e){toast('Error','e');}
+}
+async function delUser(uid){
+  if(!confirm('Permanently delete this user and all their data?')) return;
+  const r=prompt('Reason for deletion:');if(r===null) return;
+  try{await api('DELETE',`/users/${uid}`,{reason:r});toast('User deleted','s');loadUsers();}
+  catch(e){toast('Error deleting user','e');}
+}
+async function resetPW(uid){
+  const pw=prompt('New password (min 8 chars):');if(!pw||pw.length<8){toast('Password too short','e');return;}
+  try{await api('POST',`/users/${uid}/reset-password`,{newPassword:pw});toast('Password reset','s');}
+  catch(e){toast('Error','e');}
+}
+
+// ── QUESTIONS ─────────────────────────────────────────────────
+async function loadQuestions(page){
+  qPage=page||qPage;
+  const search=document.getElementById('qSearch').value;
+  const subj=document.getElementById('qSubj').value;
+  const topic=document.getElementById('qTopic').value;
+  const tbl=document.getElementById('qTbl');
+  tbl.innerHTML=`<tr><td colspan="6"><div class="ld"><div class="spin"></div></div></td></tr>`;
+  try{
+    const d=await api('GET',`/questions?page=${qPage}&limit=50&search=${encodeURIComponent(search)}&subject=${encodeURIComponent(subj)}&topic=${encodeURIComponent(topic)}`);
+    if(!d.questions?.length){tbl.innerHTML=`<tr><td colspan="6"><div class="empty"><p>No questions found</p></div></td></tr>`;return;}
+    tbl.innerHTML=d.questions.map((q,i)=>`
+      <tr>
+        <td style="font-family:var(--font-mono);color:var(--text3)">${(qPage-1)*50+i+1}</td>
+        <td style="max-width:300px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${esc(q.question||'').slice(0,80)}…</div>
+          ${q.image?'<span class="tag b" style="margin-top:4px">🖼 img</span>':''}</td>
+        <td><span class="tag gr">${esc(q.subject||'—')}</span></td>
+        <td style="font-family:var(--font-mono)">${q.topicId??'—'}</td>
+        <td style="font-size:11px">${Array.isArray(q.options)?q.options.length+' opts':'—'}</td>
+        <td>
+          <button class="btn btn-gh btn-xs" onclick="editQ('${q._id}')">Edit</button>
+          <button class="btn btn-d btn-xs" onclick="delQ('${q._id}')">Delete</button>
+        </td>
+      </tr>`).join('');
+    renderPag('qPag',d.total,qPage,d.pages,(p)=>loadQuestions(p));
+  }catch(e){tbl.innerHTML=`<tr><td colspan="6"><div class="empty"><p>Error</p></div></td></tr>`;}
+}
+function debouncedQSearch(){clearTimeout(searchT);searchT=setTimeout(()=>loadQuestions(1),400);}
+
+function openQModal(q){
+  editQId=q?q._id:null;
+  document.getElementById('mQTitle').textContent=q?'Edit Question':'Add Question';
+  document.getElementById('qTxt').value=q?.question||'';
+  document.getElementById('qCorr').value=q?.correctIndex??0;
+  document.getElementById('qSF').value=q?.subject||'';
+  document.getElementById('qTF').value=q?.topicId||'';
+  document.getElementById('qImg').value=q?.image||'';
+  document.getElementById('qExp').value=q?.explanation||'';
+  const opts=q?.options||['','','',''];
+  document.getElementById('qOpts').innerHTML=opts.map((o,i)=>`
+    <div class="fi"><label>Option ${['A','B','C','D','E'][i]}</label><input class="qopt" value="${esc(o)}"/></div>`).join('');
+  openM('mQ');
+}
+async function editQ(id){
+  try{
+    const d=await api('GET','/questions?page=1&limit=1000');
+    const q=d.questions?.find(x=>String(x._id)===String(id));
+    if(q) openQModal(q); else toast('Question not found','e');
+  }catch(e){toast('Error','e');}
+}
+async function saveQuestion(){
+  const opts=Array.from(document.querySelectorAll('.qopt')).map(i=>i.value);
+  const payload={
+    question:document.getElementById('qTxt').value,
+    options:opts,
+    correctIndex:parseInt(document.getElementById('qCorr').value),
+    subject:document.getElementById('qSF').value,
+    topicId:parseInt(document.getElementById('qTF').value)||0,
+    image:document.getElementById('qImg').value,
+    explanation:document.getElementById('qExp').value,
+  };
+  if(!payload.question){toast('Question text required','e');return;}
+  try{
+    if(editQId) await api('PUT',`/questions/${editQId}`,payload);
+    else await api('POST','/questions',payload);
+    toast(editQId?'Question updated':'Question created','s');
+    closeM('mQ');loadQuestions();
+  }catch(e){toast('Error saving question','e');}
+}
+async function delQ(id){
+  if(!confirm('Delete this question?')) return;
+  try{await api('DELETE',`/questions/${id}`,{});toast('Deleted','s');loadQuestions();}
+  catch(e){toast('Error','e');}
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────
+async function loadNotifs(){
+  try{
+    const d=await api('GET','/notifications');
+    const el=document.getElementById('nList');
+    if(!d.notifications?.length){el.innerHTML=`<div class="empty"><p>No notifications</p></div>`;return;}
+    el.innerHTML=d.notifications.map(n=>`
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <span class="tag ${n.type==='warning'?'a':n.type==='success'?'g':'b'}">${n.notifId||'—'}</span>
+          <span style="font-size:12px;color:var(--text);margin-left:8px">${esc(n.text||'').slice(0,100)}</span>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:3px">${fmtDate(n.createdAt)} · by ${esc(n.createdBy||'—')}</div>
+        </div>
+        <button class="btn btn-d btn-xs" onclick="delNotif('${n._id}')">✕</button>
+      </div>`).join('');
+  }catch(e){toast('Error loading notifications','e');}
+}
+async function sendNotif(){
+  const text=document.getElementById('nText').value;
+  const notifId=document.getElementById('nId').value;
+  const type=document.getElementById('nType').value;
+  if(!text||!notifId){toast('Text and ID required','e');return;}
+  try{
+    await api('POST','/notifications',{text,notifId,type});
+    toast('Notification sent','s');
+    document.getElementById('nText').value='';
+    document.getElementById('nId').value='';
+    loadNotifs();
+  }catch(e){toast('Error','e');}
+}
+async function delNotif(id){
+  try{await api('DELETE',`/notifications/${id}`,{});toast('Removed','s');loadNotifs();}
+  catch(e){toast('Error','e');}
+}
+
+// ── BLOCKLIST ─────────────────────────────────────────────────
+async function loadBlocklist(){
+  try{
+    const d=await api('GET','/blocklist');
+    const corsEl=document.getElementById('corsBlTbl');
+    const manEl=document.getElementById('manBanTbl');
+    if(!d.corsBlocked?.length) corsEl.innerHTML=`<tr><td colspan="5"><div class="empty"><p>No auto-blocked IPs</p></div></td></tr>`;
+    else corsEl.innerHTML=d.corsBlocked.map(b=>`
+      <tr><td style="font-family:var(--font-mono)">${esc(b.ip)}</td>
+      <td><span class="tag ${b.type==='perm'?'r':'a'}">${b.type}</span></td>
+      <td style="font-family:var(--font-mono)">${b.ttl==='permanent'?'∞':fmtTTL(b.ttl)}</td>
+      <td>${b.violations}</td>
+      <td><button class="btn btn-s btn-xs" onclick="unblockIP('${esc(b.ip)}')">Unblock</button></td></tr>`).join('');
+    if(!d.manualBans?.length) manEl.innerHTML=`<tr><td colspan="4"><div class="empty"><p>No manual bans</p></div></td></tr>`;
+    else manEl.innerHTML=d.manualBans.map(b=>`
+      <tr><td style="font-family:var(--font-mono)">${esc(b.ip)}</td>
+      <td style="font-size:12px">${esc(b.reason||'—')}</td>
+      <td style="font-size:11px">${esc(b.bannedBy||'—')}</td>
+      <td><button class="btn btn-s btn-xs" onclick="unblockIP('${esc(b.ip)}')">Unblock</button></td></tr>`).join('');
+  }catch(e){toast('Error loading blocklist','e');}
+  loadCorsLog();
+}
+async function loadCorsLog(){
+  const tbl=document.getElementById('corsLogTbl');
+  try{
+    const d=await api('GET','/blocklist/cors-violations');
+    if(!d.entries?.length){tbl.innerHTML=`<tr><td colspan="5"><div class="empty"><p>No violations logged</p></div></td></tr>`;return;}
+    tbl.innerHTML=d.entries.slice(0,100).map(e=>`
+      <tr>
+        <td style="font-size:11px;font-family:var(--font-mono)">${fmtDate(e.timestamp)}</td>
+        <td style="font-family:var(--font-mono)">${esc(e.ip||'—')}</td>
+        <td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(e.origin||'—')}</td>
+        <td style="font-size:12px;font-family:var(--font-mono)">${esc(e.path||'—')}</td>
+        <td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc((e.userAgent||'—').slice(0,60))}</td>
+      </tr>`).join('');
+  }catch(e){tbl.innerHTML=`<tr><td colspan="5"><div class="empty"><p>Could not load log</p></div></td></tr>`;}
+}
+async function banIP(){
+  const ip=document.getElementById('banIp').value.trim();
+  const reason=document.getElementById('banReason').value.trim();
+  if(!ip){toast('Enter an IP address','e');return;}
+  try{await api('POST','/blocklist/ban',{ip,reason});toast(`${ip} permanently banned`,'s');document.getElementById('banIp').value='';loadBlocklist();}
+  catch(e){toast('Error','e');}
+}
+async function unblockIP(ip){
+  try{await api('POST','/blocklist/unblock',{ip});toast(`${ip} unblocked`,'s');loadBlocklist();}
+  catch(e){toast('Error','e');}
+}
+
+// ── DEVTOOL LOGS ──────────────────────────────────────────────
+async function loadDTLogs(){
+  const tbl=document.getElementById('dtTbl');
+  try{
+    const d=await api('GET','/audit/devtools');
+    document.getElementById('dtCount').textContent=d.logs?.length+' incidents';
+    if(!d.logs?.length){tbl.innerHTML=`<tr><td colspan="6"><div class="empty"><div>🕵️</div><p>No DevTools incidents recorded</p></div></td></tr>`;return;}
+    tbl.innerHTML=d.logs.map(l=>`
+      <tr>
+        <td style="font-family:var(--font-mono);font-size:11px">${fmtDate(l.timestamp)}</td>
+        <td style="font-weight:600;color:var(--text)">${esc(l.adminUsername||'—')}</td>
+        <td style="font-family:var(--font-mono)">${esc(l.ip||'—')}</td>
+        <td><span class="tag r">${esc(l.method||'—')}</span></td>
+        <td style="font-size:12px">${esc(l.detail||'—')}</td>
+        <td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc((l.userAgent||'—').slice(0,60))}</td>
+      </tr>`).join('');
+  }catch(e){tbl.innerHTML=`<tr><td colspan="6"><div class="empty"><p>Error</p></div></td></tr>`;}
+}
+
+// ── AUDIT LOG ─────────────────────────────────────────────────
+async function loadAudit(page){
+  auPage=page||auPage;
+  const action=document.getElementById('auSearch').value;
+  const filter=document.getElementById('auFilter').value;
+  const search=action||filter;
+  const tbl=document.getElementById('auTbl');
+  tbl.innerHTML=`<tr><td colspan="5"><div class="ld"><div class="spin"></div></div></td></tr>`;
+  try{
+    const d=await api('GET',`/audit?page=${auPage}&limit=100&action=${encodeURIComponent(search)}`);
+    if(!d.logs?.length){tbl.innerHTML=`<tr><td colspan="5"><div class="empty"><p>No audit entries</p></div></td></tr>`;return;}
+    tbl.innerHTML=d.logs.map(l=>`
+      <tr>
+        <td style="font-size:11px;font-family:var(--font-mono);white-space:nowrap">${fmtDate(l.timestamp)}</td>
+        <td><span class="tag ${actionTag(l.action)}">${esc(l.action||'—')}</span></td>
+        <td style="font-size:12px">${esc(l.username||l.by||l.adminUsername||'—')}</td>
+        <td style="font-family:var(--font-mono);font-size:11px">${esc(l.ip||'—')}</td>
+        <td style="font-size:11px;color:var(--text3)">${fmtAuditDetail(l)}</td>
+      </tr>`).join('');
+    renderPag('auPag',d.total,auPage,Math.ceil(d.total/100),(p)=>loadAudit(p));
+  }catch(e){tbl.innerHTML=`<tr><td colspan="5"><div class="empty"><p>Error</p></div></td></tr>`;}
+}
+function actionTag(a){
+  if(!a) return 'gr';
+  if(a.includes('LOGIN')||a.includes('LOGOUT')) return 'b';
+  if(a.includes('FAIL')||a.includes('BLOCKED')||a.includes('DEVTOOLS')) return 'r';
+  if(a.includes('BANNED')||a.includes('DELETED')) return 'r';
+  if(a.includes('CREATED')||a.includes('SUCCESS')) return 'g';
+  return 'gr';
+}
+function fmtAuditDetail(l){
+  const skip=['action','timestamp','server','username','by','adminUsername','ip'];
+  const parts=Object.entries(l).filter(([k])=>!skip.includes(k)&&k!=='_id').map(([k,v])=>`${k}:${String(v).slice(0,40)}`);
+  return parts.slice(0,3).join(' · ')||'—';
+}
+
+// ── MAINTENANCE ───────────────────────────────────────────────
+async function loadMaintenance(){
+  try{
+    const d=await api('GET','/system/maintenance');
+    document.getElementById('mToggle').checked=d.status==='ON';
+    document.getElementById('mStart').value=d.startIST||'';
+    document.getElementById('mETA').value=d.etaIST||'';
+  }catch(e){toast('Error loading maintenance config','e');}
+}
+async function saveMaintenance(){
+  const status=document.getElementById('mToggle').checked?'ON':'OFF';
+  const startIST=document.getElementById('mStart').value;
+  const etaIST=document.getElementById('mETA').value;
+  try{await api('POST','/system/maintenance',{status,startIST,etaIST});toast('Maintenance config saved','s');}
+  catch(e){toast('Error saving','e');}
+}
+
+// ── VERSION ───────────────────────────────────────────────────
+async function loadVersion(){
+  try{
+    const d=await api('GET','/system/version');
+    document.getElementById('vCur').value=d.current||'';
+    document.getElementById('vPrev').value=d.prev||'';
+    document.getElementById('vLog').value=d.changelog||'';
+    document.getElementById('vBadge').textContent='v'+(d.current||'?');
+  }catch(e){toast('Error','e');}
+}
+async function saveVersion(){
+  const current=document.getElementById('vCur').value;
+  const prev=document.getElementById('vPrev').value;
+  const changelog=document.getElementById('vLog').value;
+  if(!current){toast('Current version required','e');return;}
+  try{
+    await api('POST','/system/version',{current,prev,changelog});
+    document.getElementById('vBadge').textContent='v'+current;
+    toast('Version updated to v'+current,'s');
+  }catch(e){toast('Error','e');}
+}
+
+// ── FEATURES ──────────────────────────────────────────────────
+async function loadFeatures(){
+  try{
+    const d=await api('GET','/system/features');
+    features=d;
+    const flagDefs=[
+      {key:'FEATURE_PHONE_AUTH',label:'Mobile OTP Auth',desc:'Show Mobile OTP tab on login screen'},
+      {key:'FEATURE_LEGACY_LOGIN',label:'Legacy Login',desc:'Show "Old User?" tab on login screen'},
+      {key:'FEATURE_OAUTH_GOOGLE',label:'Google OAuth',desc:'Show Google sign-in button'},
+      {key:'FEATURE_OAUTH_GITHUB',label:'GitHub OAuth',desc:'Show GitHub sign-in button'},
+      {key:'FEATURE_OAUTH_APPLE',label:'Apple OAuth',desc:'Show Apple sign-in button'},
+    ];
+    document.getElementById('ffList').innerHTML=flagDefs.map(f=>`
+      <div class="twrap">
+        <div class="tinfo">
+          <div class="tl">${f.label}</div>
+          <div class="td">${f.desc} · key: <code>${f.key}</code></div>
+        </div>
+        <label class="tgl">
+          <input type="checkbox" id="ff_${f.key}" ${(d[f.key]||'OFF')==='ON'?'checked':''}/>
+          <span class="tslider"></span>
+        </label>
+      </div>`).join('');
+  }catch(e){toast('Error loading feature flags','e');}
+}
+async function saveFeatures(){
+  const flagKeys=['FEATURE_PHONE_AUTH','FEATURE_LEGACY_LOGIN','FEATURE_OAUTH_GOOGLE','FEATURE_OAUTH_GITHUB','FEATURE_OAUTH_APPLE'];
+  const flags={};
+  flagKeys.forEach(k=>{
+    const el=document.getElementById('ff_'+k);
+    flags[k]=el?.checked?'ON':'OFF';
+  });
+  try{await api('POST','/system/features',{flags});toast('Feature flags saved','s');}
+  catch(e){toast('Error','e');}
+}
+
+// ── ADMIN USERS ───────────────────────────────────────────────
+async function loadAdmins(){
+  const tbl=document.getElementById('admTbl');
+  try{
+    const d=await api('GET','/admins');
+    if(!d.admins?.length){tbl.innerHTML=`<tr><td colspan="5"><div class="empty"><p>No admin users</p></div></td></tr>`;return;}
+    tbl.innerHTML=d.admins.map(a=>`
+      <tr>
+        <td style="font-family:var(--font-mono);font-weight:600;color:var(--text)">${esc(a.username)}</td>
+        <td>${esc(a.name||'—')}</td>
+        <td><span class="tag ${a.role==='superadmin'?'r':a.role==='admin'?'b':a.role==='editor'?'a':'gr'}">${a.role}</span></td>
+        <td style="font-size:11px;font-family:var(--font-mono)">${fmtDate(a.createdAt)}</td>
+        <td><button class="btn btn-d btn-xs" onclick="delAdmin('${esc(a.username)}')">Remove</button></td>
+      </tr>`).join('');
+  }catch(e){tbl.innerHTML=`<tr><td colspan="5"><div class="empty"><p>Error</p></div></td></tr>`;}
+}
+function openAdminModal(){
+  document.getElementById('aUser').value='';
+  document.getElementById('aName').value='';
+  document.getElementById('aPass').value='';
+  document.getElementById('aTOTP').style.display='none';
+  openM('mAdm');
+}
+async function createAdmin(){
+  const u=document.getElementById('aUser').value.trim();
+  const n=document.getElementById('aName').value.trim();
+  const p=document.getElementById('aPass').value;
+  const r=document.getElementById('aRole').value;
+  if(!u||!p||p.length<12){toast('Username and password (min 12 chars) required','e');return;}
+  try{
+    const d=await api('POST','/admins/create',{username:u,name:n,password:p,role:r});
+    document.getElementById('aTOTP').style.display='block';
+    document.getElementById('aTOTPText').innerHTML=
+      `<b>TOTP Secret:</b> ${d.totpSecret||'—'}<br><b>OTP URL:</b> ${d.totpQR||'—'}<br><span style="color:var(--warning)">⚠ Save this now — it cannot be retrieved again.</span>`;
+    toast('Admin created!','s');loadAdmins();
+  }catch(e){toast(e.message||'Error creating admin','e');}
+}
+async function delAdmin(username){
+  if(!confirm(`Remove admin "${username}"?`)) return;
+  try{await api('DELETE',`/admins/${username}`,{});toast('Admin removed','s');loadAdmins();}
+  catch(e){toast('Error','e');}
+}
+
+// ── MODALS ────────────────────────────────────────────────────
+function openM(id){document.getElementById(id).classList.add('on');}
+function closeM(id){document.getElementById(id).classList.remove('on');}
+// Close on backdrop click
+document.querySelectorAll('.mbg').forEach(m=>{
+  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('on');});
+});
+
+// ── PAGINATION ────────────────────────────────────────────────
+function renderPag(elId,total,page,pages,cb){
+  const el=document.getElementById(elId);
+  if(!el||pages<=1){if(el)el.innerHTML='';return;}
+  let html=`<button class="pbtn" onclick="(${cb})(${page-1})" ${page<=1?'disabled':''}>‹</button>`;
+  const start=Math.max(1,page-2),end=Math.min(pages,page+2);
+  if(start>1) html+=`<button class="pbtn" onclick="(${cb})(1)">1</button>${start>2?'<span style="color:var(--text3);padding:0 4px">…</span>':''}`;
+  for(let i=start;i<=end;i++) html+=`<button class="pbtn ${i===page?'on':''}" onclick="(${cb})(${i})">${i}</button>`;
+  if(end<pages) html+=`${end<pages-1?'<span style="color:var(--text3);padding:0 4px">…</span>':''}<button class="pbtn" onclick="(${cb})(${pages})">${pages}</button>`;
+  html+=`<button class="pbtn" onclick="(${cb})(${page+1})" ${page>=pages?'disabled':''}>›</button>`;
+  html+=`<span class="pbtn" style="cursor:default;border:none;color:var(--text3)">${total.toLocaleString()} total</span>`;
+  el.innerHTML=html;
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+function toast(msg,type='i'){
+  const c=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<span>${{s:'✓',e:'✕',w:'⚠',i:'ℹ'}[type]||'ℹ'}</span><span>${esc(msg)}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(110%)';t.style.transition='.3s';setTimeout(()=>t.remove(),300)},3500);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtDate(d){
+  if(!d) return '—';
+  try{return new Date(d).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+  catch{return '—';}
+}
+function fmtTTL(secs){
+  if(!secs||secs<0) return '—';
+  if(secs<3600) return Math.floor(secs/60)+'m';
+  if(secs<86400) return Math.floor(secs/3600)+'h';
+  return Math.floor(secs/86400)+'d';
+}
+
+// ── KEYBOARD ──────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') document.querySelectorAll('.mbg.on').forEach(m=>m.classList.remove('on'));
+});
+</script>
+</body>
+</html>

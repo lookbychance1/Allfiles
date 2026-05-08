@@ -1,0 +1,127 @@
+# ═══════════════════════════════════════════════════════════════════════
+#  Nginx — managemcq.sharepremium.in
+#  Place at: /etc/nginx/sites-available/managemcq.sharepremium.in
+#  Enable:   sudo ln -s /etc/nginx/sites-available/managemcq.sharepremium.in \
+#                       /etc/nginx/sites-enabled/
+#  Test:     sudo nginx -t && sudo systemctl reload nginx
+# ═══════════════════════════════════════════════════════════════════════
+
+# Rate-limit zones
+limit_req_zone  $binary_remote_addr  zone=adm_login:10m  rate=5r/m;
+limit_req_zone  $binary_remote_addr  zone=adm_api:10m    rate=60r/m;
+limit_conn_zone $binary_remote_addr  zone=adm_conn:10m;
+
+# ── HTTP → HTTPS ────────────────────────────────────────────────────────
+server {
+    listen 80;
+    server_name managemcq.sharepremium.in;
+    return 301 https://$host$request_uri;
+}
+
+# ── HTTPS ───────────────────────────────────────────────────────────────
+server {
+    listen 443 ssl http2;
+    server_name managemcq.sharepremium.in;
+
+    # SSL — issued by Certbot / Let's Encrypt
+    ssl_certificate     /etc/letsencrypt/live/managemcq.sharepremium.in/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/managemcq.sharepremium.in/privkey.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/managemcq.sharepremium.in/chain.pem;
+
+    ssl_protocols             TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_ciphers               ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_session_cache         shared:ADMSSL:10m;
+    ssl_session_timeout       1d;
+    ssl_session_tickets       off;
+    ssl_stapling              on;
+    ssl_stapling_verify       on;
+    resolver                  1.1.1.1 8.8.8.8 valid=300s;
+
+    # ── Security headers ─────────────────────────────────────────────────
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header X-Frame-Options           "DENY"                              always;
+    add_header X-Content-Type-Options    "nosniff"                           always;
+    add_header Referrer-Policy           "no-referrer"                       always;
+    add_header X-XSS-Protection          "1; mode=block"                     always;
+    add_header Permissions-Policy        "geolocation=(),microphone=(),camera=(),usb=(),payment=()" always;
+    add_header Content-Security-Policy
+        "default-src 'self';
+         script-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com;
+         style-src  'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
+         font-src   'self' https://fonts.gstatic.com;
+         img-src    'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org;
+         connect-src 'self' https://api.sharepremium.in;
+         frame-src  'none';
+         object-src 'none';
+         base-uri   'self';
+         form-action 'self';"
+        always;
+
+    # ── Timeouts / limits ────────────────────────────────────────────────
+    limit_conn            adm_conn 20;
+    client_max_body_size  10m;
+    client_body_timeout   15s;
+    client_header_timeout 15s;
+    keepalive_timeout     30s;
+
+    # ── Frontend root ────────────────────────────────────────────────────
+    root  /var/www/admin-dashboard/frontend;
+    index index.html;
+
+    # Block dotfiles / env files
+    location ~ /\. {
+        deny all; return 404;
+    }
+    location ~ \.(env|map)$ {
+        deny all; return 404;
+    }
+
+    # SPA — everything goes to index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-store, no-cache, must-revalidate";
+        add_header Pragma        "no-cache";
+        expires 0;
+    }
+
+    # Static assets — long cache
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff2|woff)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # ── Login route — strict rate-limit ──────────────────────────────────
+    location = /admin-api/auth/login {
+        limit_req        zone=adm_login burst=3 nodelay;
+        limit_req_status 429;
+        proxy_pass       http://127.0.0.1:3001;
+        include          snippets/proxy-params.conf;
+    }
+
+    # ── All other admin-api routes ────────────────────────────────────────
+    location /admin-api/ {
+        limit_req        zone=adm_api burst=20 nodelay;
+        limit_req_status 429;
+        proxy_pass       http://127.0.0.1:3001;
+        include          snippets/proxy-params.conf;
+    }
+
+    # ── Internal endpoint — localhost only ────────────────────────────────
+    location /admin-api/internal/ {
+        allow  127.0.0.1;
+        deny   all;
+        proxy_pass http://127.0.0.1:3001;
+        include    snippets/proxy-params.conf;
+    }
+
+    # ── Robots — tell bots to go away ─────────────────────────────────────
+    location = /robots.txt {
+        add_header Content-Type text/plain;
+        return 200 "User-agent: *\nDisallow: /\n";
+    }
+
+    # ── Logs ──────────────────────────────────────────────────────────────
+    access_log /var/log/nginx/admin.access.log combined buffer=8k flush=5s;
+    error_log  /var/log/nginx/admin.error.log   warn;
+}
