@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ManageMCQ Admin Dashboard</title>
+  <meta name="description" content="Admin panel for ManageMCQ" />
+  <style>
+    :root{--bg:#0b1220;--card:#0f1724;--accent:#06b6d4;--muted:#94a3b8;--text:#e6eef6}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+    header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:linear-gradient(90deg,#071023, #0b1228);box-shadow:0 1px 0 rgba(255,255,255,0.02)}
+    .brand{font-weight:700;color:var(--accent)}
+    .container{padding:20px;max-width:1200px;margin:20px auto}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .card{background:var(--card);padding:16px;border-radius:8px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    .small{font-size:13px;color:var(--muted)}
+    footer{padding:12px 20px;text-align:center;color:var(--muted);font-size:13px}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">ManageMCQ — Admin</div>
+    <nav class="small">Logged as: <strong id="admin-name">—</strong></nav>
+  </header>
+
+  <main class="container">
+    <section class="grid">
+      <div class="card">
+        <h3>Traffic (Live)</h3>
+        <div id="traffic">Loading...</div>
+      </div>
+      <div class="card">
+        <h3>Quick Actions</h3>
+        <button id="btn-maint">Toggle Maintenance</button>
+        <button id="btn-blocklist">Blocklist</button>
+      </div>
+      <div class="card">
+        <h3>DevTool Guard</h3>
+        <div id="devtool-status">Not reported</div>
+      </div>
+    </section>
+
+    <section style="margin-top:18px" class="card">
+      <h3>Recent Incidents</h3>
+      <div id="incidents">Loading...</div>
+    </section>
+  </main>
+
+  <footer>ManageMCQ Admin Panel — Hosted at managemcq.sharepremium.in</footer>
+
+  <script>
+    async function fetchLive(){
+      try{
+        const r=await fetch('/api/admin/geo-stats/live');
+        const j=await r.json();
+        document.getElementById('traffic').innerText = `${j.totalReqs||0} reqs · ${Object.keys(j.countries||{}).length} countries`;
+      }catch(e){document.getElementById('traffic').innerText='Failed to load';}
+    }
+    async function fetchIncidents(){
+      try{const r=await fetch('/api/admin/devtool/incidents');const j=await r.json();
+        const list=j.incidents||[];document.getElementById('incidents').innerHTML = list.slice(0,10).map(it=>`<div class="small">${new Date(it.timestamp).toLocaleString()} • ${it.method} • ${it.ip} • ${it.username||'—'}</div>`).join('');
+      }catch(e){document.getElementById('incidents').innerText='Failed to load';}
+    }
+    fetchLive();fetchIncidents();setInterval(fetchLive,15000);setInterval(fetchIncidents,30000);
+
+    // Load devtool detection snippet (served by backend)
+    (function(){
+      const s=document.createElement('script');s.src='/api/admin/devtool/snippet.js';s.async=true;document.head.appendChild(s);
+    })();
+  </script>
+</body>
+</html>

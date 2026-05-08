@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# bootstrap_create_admin.sh — Create first superadmin via the admin API
+# Usage:
+#   ./bootstrap_create_admin.sh https://managemcq.sharepremium.in <BOOTSTRAP_SECRET> <username> <password>
+
+if [ "$#" -lt 4 ]; then
+  echo "Usage: $0 <ADMIN_URL> <BOOTSTRAP_SECRET> <username> <password>"
+  exit 1
+fi
+
+ADMIN_URL="$1"
+BOOTSTRAP_SECRET="$2"
+USERNAME="$3"
+PASSWORD="$4"
+
+curl -s -X POST "$ADMIN_URL/api/admin/auth/create-admin" \
+  -H "Content-Type: application/json" \
+  -d '{"bootstrapSecret":"'
